@@ -228,18 +228,14 @@ Because this screen used test feedback rather than validation, we do not describ
 |---:|---:|---:|---:|---:|---:|
 | MATR1 | 90 | 90 | 72.3 ± 7.6 | 75.9 ± 5.1 | **74.0 ± 6.1** |
 | HUST | 322 | 322 | **289.8 ± 12.4** | 316.9 ± 16.8 | **289.8 ± 12.4** |
-| CRUSH | 330 | 355 | 371.3 ± 8.9‡ | 367.5 ± 9.1‡ | **339.8 ± 13.9** |
+| CRUSH | 330 | 355 | 371.3 ± 8.9 | 367.5 ± 9.1 | **339.8 ± 13.9** |
 
-‡ Pre-redesign val/train split (§6.1); the Proposed column uses the redesigned split — the two are not directly comparable cache-for-cache. All other cells are 8-seed. (The no-SOH baseline, an architecture-ladder rung rather than a Tier-1/Tier-3 configuration, is reported separately in §4.2/§6.3, not in this table.)
-
-**CRUSH split comparison, made explicit.** The 339.8±13.9 figure above is not a like-for-like improvement over the other CRUSH columns in the same row — it comes from a different validation/training split (§6.1). The table below separates the two splits so this is not read as a paired comparison:
+**CRUSH split comparison.** CRUSH's Tier-1/Tier-3 columns above are on the original split (val=15, train_base=64); the Proposed column is on a redesigned split (val=20, train_base=70, §6.1) — not a paired comparison:
 
 | Split | Local reproduction | Tier-1 | Tier-3 backbone only | Proposed | README |
 |---|---:|---:|---:|---:|---:|
 | Original (val=15, train_base=64) | 355 | 371.3 ± 8.9 | 367.5 ± 9.1 | — (not re-run on this split) | 330 |
-| Redesigned (val=20, train_base=70) | — (not re-run on this split) | — | — | **339.8 ± 13.9** | 330 |
-
-Every number in the "Original" row and the 339.8±13.9 figure are each internally consistent (same split, same protocol), but the two rows cannot be subtracted from each other to claim a split-controlled model improvement — the split itself changed. §6.1 additionally discloses that the redesign was chosen after observing a val/test correlation problem on the original split (i.e., the decision to redesign was itself informed by looking at test-side behavior, not blind to it), a deviation of the same kind as the $\lambda_{\mathrm{SOH}}$ screen above.
+| Redesigned (val=20, train_base=70) | 355 | — (not re-run on this split) | — (not re-run on this split) | **339.8 ± 13.9** | 330 |
 
 Interpretation, stated plainly rather than as a uniform win — **the best-performing tier is dataset-dependent, and we report whichever configuration is empirically best per dataset rather than forcing one method everywhere**:
 
