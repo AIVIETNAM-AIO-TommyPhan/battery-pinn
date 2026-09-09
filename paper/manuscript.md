@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Accurate battery remaining useful life (RUL) prediction is challenging because the RUL label is sparse, degradation trajectories are heterogeneous across cells, and models often fail to generalize across laboratories and protocols. We propose a degradation-aware architecture combining a CNN backbone, learned attention pooling over the cycle axis, and physics-derived voltage–capacity features, which alone surpasses the published benchmark on MATR1 and HUST. We then investigate a physics-informed auxiliary objective (Tier-3) that supervises the network with the SOH trajectory under an explicit degradation model — a monotonicity constraint and a Wiener-process diffusion term (\(dD(t) = \mu\,dt + \sigma\,dW(t)\)) governing capacity fade — and combine it with an Inter-Cell Embedding module that corrects predictions using pairwise relationships between cells. Under a strict validation-only model-selection protocol with 5-seed evaluation, we report the resulting pipeline's performance on MATR1, HUST, and CRUSH against both the published README benchmark and our own in-process reproduction of it, and disclose every case where a deviation from the pre-declared protocol occurred. The physics-informed objective's benefit is dataset-dependent; we report this honestly and discuss a mechanistic hypothesis (source heterogeneity) for why, rather than presenting a uniform improvement claim.
+Accurate battery remaining useful life (RUL) prediction is challenging because the RUL label is sparse, degradation trajectories are heterogeneous across cells, and models often fail to generalize across laboratories and protocols. We propose a degradation-aware architecture combining a CNN backbone, learned attention pooling over the cycle axis, and physics-derived voltage–capacity features, which alone surpasses the published benchmark on MATR1 and HUST. We then investigate a physics-informed auxiliary objective (Tier-3) that supervises the network with the SOH trajectory under an explicit degradation model — a monotonicity constraint and a Wiener-process diffusion term ($dD(t) = \mu\,dt + \sigma\,dW(t)$) governing capacity fade — and combine it with an Inter-Cell Embedding module that corrects predictions using pairwise relationships between cells. Under a strict validation-only model-selection protocol with 5-seed evaluation, we report the resulting pipeline's performance on MATR1, HUST, and CRUSH against both the published README benchmark and our own in-process reproduction of it, and disclose every case where a deviation from the pre-declared protocol occurred. The physics-informed objective's benefit is dataset-dependent; we report this honestly and discuss a mechanistic hypothesis (source heterogeneity) for why, rather than presenting a uniform improvement claim.
 
 ---
 
@@ -36,7 +36,7 @@ As a result, many models achieve low training error but exhibit large and unstab
 We propose a framework for battery RUL prediction with four components, presented in the order of the evidence supporting them:
 
 1. **Axis-aware attention backbone**: a CNN backbone with learned attention pooling over the cycle axis, plus a scalar branch over three physics-derived voltage–capacity features. This component alone surpasses the published README benchmark on MATR1 and HUST (§5.1).
-2. **Tier-3 physics-informed objective**: an auxiliary SOH-trajectory head trained jointly with (a) a monotonicity constraint on predicted SOH and (b) a Wiener-process diffusion loss on the capacity-fade increment \(D(t) = 1 - \mathrm{SOH}(t)\), i.e. an explicit stochastic degradation model \(dD(t) = \mu\,dt + \sigma\,dW(t)\) (§3.5). This is what we regard as the physics-informed component proper, as distinct from SOH-only auxiliary supervision (Tier-1), which we use only as a component inside the Inter-Cell Embedding module (below), not as a standalone claim.
+2. **Tier-3 physics-informed objective**: an auxiliary SOH-trajectory head trained jointly with (a) a monotonicity constraint on predicted SOH and (b) a Wiener-process diffusion loss on the capacity-fade increment $D(t) = 1 - \mathrm{SOH}(t)$, i.e. an explicit stochastic degradation model $dD(t) = \mu\,dt + \sigma\,dW(t)$ (§3.5). This is what we regard as the physics-informed component proper, as distinct from SOH-only auxiliary supervision (Tier-1), which we use only as a component inside the Inter-Cell Embedding module (below), not as a standalone claim.
 3. **Inter-Cell Embedding correction**: a small model that predicts pairwise RUL differences from frozen cell embeddings and aggregates over reference cells, used as a correction term in the final ensemble (§3.6).
 4. **Source-aware validation protocol**: train/validation/test separated by dataset and source, validation-only model selection, and 5-seed evaluation, with every deviation from this rule disclosed explicitly (§4.3, §7).
 
@@ -74,19 +74,19 @@ Several studies investigate transfer learning and domain adaptation across batte
 
 ### 3.1 Problem Formulation
 
-Let \(i\) index a battery cell. For each cell, we observe an input trajectory \(X_i\) (voltage and capacity over early cycles), a scalar RUL label \(y_i\), and an SOH trajectory \(\mathbf{s}_i = [s_{i,1}, \dots, s_{i,T}]\). Our goal is to learn \(f_\theta\) such that \(\hat{y}_i = f_\theta(X_i)\), optionally using \(\mathbf{s}_i\) as an auxiliary/physics-informed target during training only.
+Let $i$ index a battery cell. For each cell, we observe an input trajectory $X_i$ (voltage and capacity over early cycles), a scalar RUL label $y_i$, and an SOH trajectory $\mathbf{s}_i = [s_{i,1}, \dots, s_{i,T}]$. Our goal is to learn $f_\theta$ such that $\hat{y}_i = f_\theta(X_i)$, optionally using $\mathbf{s}_i$ as an auxiliary/physics-informed target during training only.
 
 ### 3.2 Input Representation
 
-Each cell is represented by a sequence of cycles. For each cycle we extract discharge voltage curves \(V(Q)\) and capacity-related features (e.g., Qdlin). We normalize across cells and cycles, and ensure no information from cycles beyond the input window is used at prediction time.
+Each cell is represented by a sequence of cycles. For each cycle we extract discharge voltage curves $V(Q)$ and capacity-related features (e.g., Qdlin). We normalize across cells and cycles, and ensure no information from cycles beyond the input window is used at prediction time.
 
 ### 3.3 Physics-Derived Degradation Features
 
 Three handcrafted scalar features, computed over early cycles (0–99):
 
-1. **qdlin_diff_std** — \(\operatorname{std}_V\left[Q_{\text{dlin}}^{(99)}(V) - Q_{\text{dlin}}^{(9)}(V)\right]\): non-uniformity of capacity fade across voltage bins.
-2. **voltage_slope_50_90** — \(\frac{V_{90}-V_{50}}{0.4}\): slope of the discharge voltage curve in the high-SOC region.
-3. **voltage_soc_90** — \(V_{90}\): discharge voltage at SOC 90%.
+1. **qdlin_diff_std** — $\operatorname{std}_V\left[Q_{\text{dlin}}^{(99)}(V) - Q_{\text{dlin}}^{(9)}(V)\right]$: non-uniformity of capacity fade across voltage bins.
+2. **voltage_slope_50_90** — $\frac{V_{90}-V_{50}}{0.4}$: slope of the discharge voltage curve in the high-SOC region.
+3. **voltage_soc_90** — $V_{90}$: discharge voltage at SOC 90%.
 
 These are computed from observed data only and introduce no label leakage.
 
@@ -111,51 +111,51 @@ The three physics-derived features pass through a small MLP (3→16→16, ReLU).
 
 #### 3.4.4 Fusion, Embedding, and Regression Head
 
-The sequence embedding and scalar embedding are concatenated into a 48-dim cell embedding \(h_i\), which is (a) passed through a linear RUL head, and (b) reused as-is by the Inter-Cell Embedding module (§3.6) and the auxiliary heads (§3.5):
-\[
+The sequence embedding and scalar embedding are concatenated into a 48-dim cell embedding $h_i$, which is (a) passed through a linear RUL head, and (b) reused as-is by the Inter-Cell Embedding module (§3.6) and the auxiliary heads (§3.5):
+$$
 \hat{y}_i = \mathrm{Linear}_{\mathrm{RUL}}(h_i).
-\]
+$$
 
 ### 3.5 Training Objectives: Tier-1 (SOH-Auxiliary) and Tier-3 (Physics-Informed)
 
 **RUL loss (both tiers, and the no-SOH baseline).** We use plain MSE, not Huber:
-\[
+$$
 \mathcal{L}_{\mathrm{RUL}} = \mathrm{MSE}(\hat{y}_i, y_i).
-\]
+$$
 
-**Tier-1 (SOH-auxiliary).** An additional head \(\mathrm{soh\_head}: \mathbb{R}^{48}\to\mathbb{R}^{100}\) predicts the SOH trajectory, supervised with Smooth-L1 (Huber):
-\[
+**Tier-1 (SOH-auxiliary).** An additional head $\mathrm{soh\_head}: \mathbb{R}^{48}\to\mathbb{R}^{100}$ predicts the SOH trajectory, supervised with Smooth-L1 (Huber):
+$$
 \mathcal{L}_{\mathrm{SOH}} = \mathrm{SmoothL1}(\hat{\mathbf{s}}_i, \mathbf{s}_i), \qquad
 \mathcal{L}_{\mathrm{Tier1}} = \mathcal{L}_{\mathrm{RUL}} + \lambda_{\mathrm{SOH}}\,\mathcal{L}_{\mathrm{SOH}}.
-\]
+$$
 Tier-1 is not claimed as physics-informed in the strict sense (§2.2); we use it in this work only as the embedding source for the Inter-Cell Embedding module (§3.6), not as a standalone result.
 
-**Tier-3 (physics-informed, this work's main objective).** Two additional heads, \(\mu\_\mathrm{head}\) and \(\sigma\_\mathrm{head}\) (each \(\mathbb{R}^{48}\to\mathbb{R}^{100}\)), parameterize a Wiener process over the modeled capacity-fade increment. Let \(D_t = 1 - \hat{s}_{i,t}\):
+**Tier-3 (physics-informed, this work's main objective).** Two additional heads, $\mu_{\mathrm{head}}$ and $\sigma_{\mathrm{head}}$ (each $\mathbb{R}^{48}\to\mathbb{R}^{100}$), parameterize a Wiener process over the modeled capacity-fade increment. Let $D_t = 1 - \hat{s}_{i,t}$:
 
-\[
+$$
 \mathcal{L}_{\mathrm{mono}} = \frac{1}{T-1}\sum_{t=1}^{T-1} \mathrm{ReLU}\big(\hat{s}_{i,t+1} - \hat{s}_{i,t} - \tau\big), \qquad \tau = 0.002,
-\]
-\[
+$$
+$$
 \Delta D_t = D_{t+1} - D_t, \quad r_t = \Delta D_t - \mu_t, \quad v_t = \sigma_t^2 + \epsilon,
-\]
-\[
+$$
+$$
 \mathcal{L}_{\mathrm{Wiener}} = \frac{1}{T-1}\sum_{t=1}^{T-1} \left(\frac{1}{2}\frac{r_t^2}{v_t} + \frac{1}{2}\log v_t\right),
-\]
-\[
+$$
+$$
 \mathcal{L}_{\mathrm{Tier3}} = \mathcal{L}_{\mathrm{RUL}} + \lambda_{\mathrm{SOH}}\mathcal{L}_{\mathrm{SOH}} + \lambda_{\mathrm{mono}}\mathcal{L}_{\mathrm{mono}} + \lambda_{\mathrm{wiener}}\mathcal{L}_{\mathrm{Wiener}}.
-\]
+$$
 
-Pre-declared weights: \(\lambda_{\mathrm{SOH}}=0.01\), \(\lambda_{\mathrm{mono}}=0.05\), \(\lambda_{\mathrm{wiener}}=0.05\), used identically across MATR1, HUST, and CRUSH in the Tier-3 backbone. (A separate, disclosed screen over \(\lambda_{\mathrm{SOH}}\in\{0.01,0.05,0.1\}\) was run at the Tier-1 stage on all three datasets — see §4.3 and §7 for what was and was not used from that screen.)
+Pre-declared weights: $\lambda_{\mathrm{SOH}}=0.01$, $\lambda_{\mathrm{mono}}=0.05$, $\lambda_{\mathrm{wiener}}=0.05$, used identically across MATR1, HUST, and CRUSH in the Tier-3 backbone. (A separate, disclosed screen over $\lambda_{\mathrm{SOH}}\in\{0.01,0.05,0.1\}$ was run at the Tier-1 stage on all three datasets — see §4.3 and §7 for what was and was not used from that screen.)
 
-\(\mathcal{L}_{\mathrm{Tier3}}\) is what we regard as genuinely physics-informed: the Wiener term encodes an explicit governing SDE for degradation, not just a regression target.
+$\mathcal{L}_{\mathrm{Tier3}}$ is what we regard as genuinely physics-informed: the Wiener term encodes an explicit governing SDE for degradation, not just a regression target.
 
 ### 3.6 Inter-Cell Embedding Module
 
-For a pair of cells \((i,j)\) with frozen embeddings \(h_i, h_j\) from a trained backbone, a small MLP (\(48\to64\to1\), ReLU) predicts the RUL difference:
-\[
+For a pair of cells $(i,j)$ with frozen embeddings $h_i, h_j$ from a trained backbone, a small MLP ($48\to64\to1$, ReLU) predicts the RUL difference:
+$$
 \widehat{\Delta y}_{ij} = g_\phi(h_i - h_j).
-\]
-At inference, a test cell's RUL is estimated as the median, over \(K\) reference train cells and 8 delta-model seeds, of \(y_r + \widehat{\Delta y}_{i,r}\).
+$$
+At inference, a test cell's RUL is estimated as the median, over $K$ reference train cells and 8 delta-model seeds, of $y_r + \widehat{\Delta y}_{i,r}$.
 
 **Which embedding to use.** We use **V2 trained under Tier-1** (SOH-auxiliary only, no monotonicity/Wiener) as the embedding source for this module, while the intra-cell backbone used elsewhere in the pipeline is **V1 trained under Tier-3**. This is a direct, disclosed empirical choice, not a theoretical requirement: on MATR1, Inter-Cell Embedding built on the Tier-3 embedding scored 79.25±5.04, versus a clear improvement using the Tier-1 embedding (used in the final pipeline, §5.1). We report the comparison in §6.2 rather than assuming either choice.
 
@@ -183,7 +183,7 @@ Note the corrected naming: the cross-lab composite dataset is **CRUSH** (README 
 ### 4.2 Baselines
 
 - **No-SOH baseline**: the axis-aware attention architecture (V1+V2+Inter-Cell Embedding, all trained with plain MSE, no auxiliary head).
-- **Tier-3 backbone only**: V1+V2 trained under \(\mathcal{L}_{\mathrm{Tier3}}\), no Inter-Cell Embedding.
+- **Tier-3 backbone only**: V1+V2 trained under $\mathcal{L}_{\mathrm{Tier3}}$, no Inter-Cell Embedding.
 - **Proposed full pipeline**: Tier-3 backbone (V1+V2) + Inter-Cell Embedding (Tier-1 embedding), NNLS-ensembled.
 - Additional architectures (BatLiNet, BatLiNet-V2, 1D-CNN, LSTM/BiLSTM baselines) are reported in the Appendix.
 
@@ -192,9 +192,9 @@ Note the corrected naming: the cross-lab composite dataset is **CRUSH** (README 
 - **Multi-seed evaluation**: 5 seeds for MATR1/HUST/CRUSH main results; 1 seed for CRUH/SNL/CALCE (§5.4), explicitly reported as a screen, not a claim.
 - **Checkpoint selection**: lowest validation RMSE per seed; test evaluated once per seed on the selected checkpoint.
 - **Metrics**: RMSE, MAE, MAPE, and R² reported together (§5.1 currently reports RMSE only pending backfill of the other three — [TBD]).
-- **Pre-declared hyperparameters**: \(\lambda_{\mathrm{SOH}}, \lambda_{\mathrm{mono}}, \lambda_{\mathrm{wiener}}, \tau\) (§3.5) are fixed identically across datasets and were not tuned per-dataset for the Tier-3 backbone.
+- **Pre-declared hyperparameters**: $\lambda_{\mathrm{SOH}}, \lambda_{\mathrm{mono}}, \lambda_{\mathrm{wiener}}, \tau$ (§3.5) are fixed identically across datasets and were not tuned per-dataset for the Tier-3 backbone.
 
-**Disclosed deviation.** During Tier-1 development, \(\lambda_{\mathrm{SOH}}\) was screened over \(\{0.01, 0.05, 0.1\}\) using test RMSE feedback — single-seed for MATR1, full 5/8-seed for HUST and CRUSH. This is a deviation from the validation-only selection rule stated above. We report it here rather than presenting the Tier-1 embedding (used inside Inter-Cell Embedding, §3.6) as selected under the same discipline as the Tier-3 backbone's pre-declared weights. [TBD: state which \(\lambda_{\mathrm{SOH}}\) value was ultimately used for the Tier-1 embedding in each dataset's final pipeline.]
+**Disclosed deviation.** During Tier-1 development, $\lambda_{\mathrm{SOH}}$ was screened over $\{0.01, 0.05, 0.1\}$ using test RMSE feedback — single-seed for MATR1, full 5/8-seed for HUST and CRUSH. This is a deviation from the validation-only selection rule stated above. We report it here rather than presenting the Tier-1 embedding (used inside Inter-Cell Embedding, §3.6) as selected under the same discipline as the Tier-3 backbone's pre-declared weights. [TBD: state which $\lambda_{\mathrm{SOH}}$ value was ultimately used for the Tier-1 embedding in each dataset's final pipeline.]
 
 ---
 
@@ -287,7 +287,7 @@ Tier-3's effect relative to the simpler Tier-1 (SOH-auxiliary only) objective is
 - **HUST**: Tier-3 is worse than Tier-1 at every seed and every individual component (§5.2b) — 313.12±18.55 vs. 291.67±13.62, a consistent ~21-point RMSE gap. This is not an ensemble-selection artifact; V1 solo, V2 solo, and Inter-Cell Embedding solo are each worse under Tier-3 than under Tier-1 at all 5 seeds. We had originally hypothesized (following an earlier, single-seed screen) that Tier-3 would show its clearest gain on HUST; the full 5-seed result contradicts this, and we report the reversal rather than the earlier hypothesis.
 - **CRUSH**: unlike HUST, Tier-3 does not clearly hurt here — it is numerically the best of the three configurations (367.49±9.07 vs. 371.29±8.92 for Tier-1 and 371.64±5.53 for the no-SOH baseline, all 5-8 seeds), but the gap between all three is within noise. None beats README (330) or the local reproduction (355).
 
-A tentative explanation for HUST's result: the monotonicity and Wiener terms assume a reasonably smooth, well-sampled degradation trajectory to fit \(\mu_t, \sigma_t\) per cycle; HUST's inputs are processed in smaller chunks (CHUNK=48, §4) to fit GPU memory, which may make the per-cycle Wiener parameterization noisier to fit than on MATR1, where the full sequence is used at once. CRUSH uses the same chunking (CHUNK=48) yet does not show HUST's clear degradation, so chunk size alone does not fully explain the HUST result — we flag this as an open question rather than a confirmed mechanism. We do not claim Tier-3 "works" or "doesn't work" in general — only that its effect must be checked per dataset, and that HUST is a case where it measurably hurts while CRUSH and MATR1 are not.
+A tentative explanation for HUST's result: the monotonicity and Wiener terms assume a reasonably smooth, well-sampled degradation trajectory to fit $\mu_t, \sigma_t$ per cycle; HUST's inputs are processed in smaller chunks (CHUNK=48, §4) to fit GPU memory, which may make the per-cycle Wiener parameterization noisier to fit than on MATR1, where the full sequence is used at once. CRUSH uses the same chunking (CHUNK=48) yet does not show HUST's clear degradation, so chunk size alone does not fully explain the HUST result — we flag this as an open question rather than a confirmed mechanism. We do not claim Tier-3 "works" or "doesn't work" in general — only that its effect must be checked per dataset, and that HUST is a case where it measurably hurts while CRUSH and MATR1 are not.
 
 On CRUSH specifically, we also found that the ensemble-combination method matters more than which tier is used: with only 15 validation cells, NNLS's three free weights can fit validation noise that does not generalize to the 44-cell test set — a simple unweighted mean of the three components sometimes outperforms NNLS at 5 seeds (367.59±4.64 vs. 371.41±6.07) but this reverses at 8 seeds (370.12±6.33 vs. 367.49±9.07), indicating neither choice is reliably better at this validation-set size, and any single comparison across only a few seeds should not be trusted to pick the right ensemble method for this dataset.
 
@@ -296,7 +296,7 @@ On CRUSH specifically, we also found that the ensemble-combination method matter
 ## 7. Limitations
 
 1. **CRUSH does not beat README or our local reproduction under any configuration tested.** No-SOH baseline, Tier-1, and Tier-3 all cluster at 367-372 RMSE, against a local reproduction of 355 and a published README figure of 330 (§5.1, §6.3). An earlier draft of this manuscript reported a "Baseline/Proposed" pair of 357.18/352.92 for CRUSH; a direct search of every result file in the current, consistent cache could not trace these numbers to any actual run, and we have replaced them with the verified figures above. We flag this correction explicitly rather than silently updating the number, since it changes CRUSH from an apparent (if modest) near-miss into a dataset where none of our methods are competitive with the published benchmark.
-2. **λ_SOH selection.** The SOH loss weight was screened over \(\{0.01, 0.05, 0.1\}\) using test RMSE feedback for the Tier-1 embedding source, across all three main datasets (single-seed for MATR1; full multi-seed for HUST and CRUSH) — a disclosed deviation from the validation-only protocol in §4.3. The value ultimately used was λ=0.01 for MATR1 and λ=0.10 for HUST and CRUSH.
+2. **λ_SOH selection.** The SOH loss weight was screened over $\{0.01, 0.05, 0.1\}$ using test RMSE feedback for the Tier-1 embedding source, across all three main datasets (single-seed for MATR1; full multi-seed for HUST and CRUSH) — a disclosed deviation from the validation-only protocol in §4.3. The value ultimately used was λ=0.01 for MATR1 and λ=0.10 for HUST and CRUSH.
 3. **Inter-Cell Embedding's tier mismatch.** The final pipeline's correction module is trained on a Tier-1, not Tier-3, embedding (§3.6, §6.2) — a deliberate, empirically-motivated choice, but one that means the "physics-informed" claim applies to the intra-cell backbone, not to every component of the final ensemble.
 4. **HUST's proposed result is Tier-1, not Tier-3.** Having completed the 5-seed Tier-3 run for HUST, we find Tier-3 underperforms Tier-1 at every seed and component (§5.2b); we report Tier-1's ensemble (289.82±12.38) as HUST's proposed result rather than forcing a Tier-3-based number into the headline.
 5. **Ensemble-method instability on small validation sets.** On CRUSH (val n=15), whether NNLS or a simple mean is the better ensemble-combination method reverses between 5 and 8 seeds (§6.3); we report both rather than picking whichever favors our headline number, and caution against trusting a small-seed-count comparison to select an ensemble method for this dataset.
