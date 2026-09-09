@@ -234,8 +234,8 @@ Because this screen used test feedback rather than validation, we do not describ
 
 | Split | Local reproduction | Tier-1 | Tier-3 backbone only | Proposed | README |
 |---|---:|---:|---:|---:|---:|
-| Original (val=15, train_base=64) | 355 | 371.3 ± 8.9 | 367.5 ± 9.1 | — (not re-run on this split) | 330 |
-| Redesigned (val=20, train_base=70) | 355 | — (not re-run on this split) | — (not re-run on this split) | **339.8 ± 13.9** | 330 |
+| Original (val=15, train_base=64) | 355 | 371.3 ± 8.9 | 367.5 ± 9.1 | — | 330 |
+| Redesigned (val=20, train_base=70) | 355 | — | — | **339.8 ± 13.9** | 330 |
 
 Interpretation, stated plainly rather than as a uniform win — **the best-performing tier is dataset-dependent, and we report whichever configuration is empirically best per dataset rather than forcing one method everywhere**:
 
