@@ -160,6 +160,7 @@ At inference, a test cell's RUL is estimated as the median, over $K$ reference t
 **Which embedding to use.** We use **V2 trained under Tier-1** (SOH-auxiliary only, no monotonicity/Wiener) as the embedding source for this module, while the intra-cell backbone used elsewhere in the pipeline is **V1 trained under Tier-3**. This is a direct, disclosed empirical choice, not a theoretical requirement: on MATR1, Inter-Cell Embedding built on the Tier-3 embedding scored 79.25±5.04, versus a clear improvement using the Tier-1 embedding (used in the final pipeline, §5.1). We report the comparison in §6.2 rather than assuming either choice.
 
 The final proposed pipeline combines, via an affine-calibrated NNLS ensemble fit on validation:
+
 - **V1 (Tier-3)** and **V2 (Tier-3)** — the physics-informed backbone, and
 - **Inter-Cell Embedding (built on V2, Tier-1 embedding)** — the correction term.
 
