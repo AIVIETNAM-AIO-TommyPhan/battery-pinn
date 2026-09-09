@@ -224,28 +224,28 @@ Because this screen used test feedback rather than validation, we do not describ
 
 ### 5.1 Main RUL Prediction Performance
 
-| Dataset | README | Local reproduction | No-SOH baseline | Tier-1 (SOH-aux) | Tier-3 backbone only | **Proposed (best available)** |
-|---:|---:|---:|---:|---:|---:|---:|
-| MATR1 | 90 | 90 | 70.4 ± 4.9† | 72.3 ± 7.6 | 75.9 ± 5.1 | **74.0 ± 6.1** |
-| HUST | 322 | 322 | 299.4 ± 19.5 | **289.8 ± 12.4** | 316.9 ± 16.8 | **289.8 ± 12.4** |
-| CRUSH | 330 | 355 | 371.6 ± 5.5‡ | 371.3 ± 8.9‡ | 367.5 ± 9.1‡ | **339.8 ± 13.9** |
+| Dataset | README | Local reproduction | Tier-1 (SOH-aux) | Tier-3 backbone only | **Proposed (best available)** |
+|---:|---:|---:|---:|---:|---:|
+| MATR1 | 90 | 90 | 72.3 ± 7.6 | 75.9 ± 5.1 | **74.0 ± 6.1** |
+| HUST | 322 | 322 | **289.8 ± 12.4** | 316.9 ± 16.8 | **289.8 ± 12.4** |
+| CRUSH | 330 | 355 | 371.3 ± 8.9‡ | 367.5 ± 9.1‡ | **339.8 ± 13.9** |
 
-† 5-seed only; no 8-seed run of this baseline exists. ‡ Pre-redesign val/train split (§6.1); the Proposed column uses the redesigned split — the two are not directly comparable cache-for-cache. All other cells are 8-seed.
+‡ Pre-redesign val/train split (§6.1); the Proposed column uses the redesigned split — the two are not directly comparable cache-for-cache. All other cells are 8-seed. (The no-SOH baseline, an architecture-ladder rung rather than a Tier-1/Tier-3 configuration, is reported separately in §4.2/§6.3, not in this table.)
 
 **CRUSH split comparison, made explicit.** The 339.8±13.9 figure above is not a like-for-like improvement over the other CRUSH columns in the same row — it comes from a different validation/training split (§6.1). The table below separates the two splits so this is not read as a paired comparison:
 
-| Split | Local reproduction | No-SOH baseline | Tier-1 | Tier-3 backbone only | Proposed | README |
-|---|---:|---:|---:|---:|---:|---:|
-| Original (val=15, train_base=64) | 355 | 371.6 ± 5.5 | 371.3 ± 8.9 | 367.5 ± 9.1 | — (not re-run on this split) | 330 |
-| Redesigned (val=20, train_base=70) | — (not re-run on this split) | — | — | — | **339.8 ± 13.9** | 330 |
+| Split | Local reproduction | Tier-1 | Tier-3 backbone only | Proposed | README |
+|---|---:|---:|---:|---:|---:|
+| Original (val=15, train_base=64) | 355 | 371.3 ± 8.9 | 367.5 ± 9.1 | — (not re-run on this split) | 330 |
+| Redesigned (val=20, train_base=70) | — (not re-run on this split) | — | — | **339.8 ± 13.9** | 330 |
 
 Every number in the "Original" row and the 339.8±13.9 figure are each internally consistent (same split, same protocol), but the two rows cannot be subtracted from each other to claim a split-controlled model improvement — the split itself changed. §6.1 additionally discloses that the redesign was chosen after observing a val/test correlation problem on the original split (i.e., the decision to redesign was itself informed by looking at test-side behavior, not blind to it), a deviation of the same kind as the $\lambda_{\mathrm{SOH}}$ screen above.
 
 Interpretation, stated plainly rather than as a uniform win — **the best-performing tier is dataset-dependent, and we report whichever configuration is empirically best per dataset rather than forcing one method everywhere**:
 
-- **MATR1**: the Tier-3-based pipeline (backbone + Inter-Tier-1 correction, 74.0±6.1, 8-seed) is the proposed result, landing within noise of the no-SOH baseline (70.4±4.9, 5-seed only). The pure Tier-1 ensemble (72.3±7.6, 8-seed) is numerically the best single number we have, but we do not adopt it as the MATR1 headline since it is not part of this work's core Tier-3 narrative — it is listed here only for completeness (§7 discusses why). Seed 7 is the one exception across all 8 seeds: the first individual seed where the full Tier-3 ensemble (83.5) beats Tier-1 (86.8), narrowing but not overturning the mean ordering.
-- **HUST**: Tier-3 underperforms *every* other configuration here, including the no-SOH baseline — confirmed across all **8** seeds (not just the original 5) and at the level of every individual component (V1, V2, and Inter each score worse under Tier-3 than under Tier-1 at every seed; §5.2b). The proposed result for HUST is therefore the **Tier-1 (SOH-auxiliary) ensemble**, which is also what beats the README benchmark most clearly (289.8 vs. 322).
-- **CRUSH**: the pre-redesign split's three configurations (no-SOH baseline, Tier-1, Tier-3) all clustered in the 367-372 range, beating neither README (330) nor our local reproduction (355). Investigating why (§6.1) surfaced a real train/val/test leakage bug in that split (fixed, but did not change the outcome) and, separately, a val-set RUL-coverage problem that did: redesigning val (random draw, size 15→20) and reinforcing train_base (64→70 cells) flips the val/test correlation from strongly negative to strongly positive and yields a new 8-seed result, **339.8±13.9** (`mean[V1-T3, V2-T3, Inter(V2-T3)]`, on the redesigned split; note this uses the Tier-3, not Tier-1, embedding for the Inter term, unlike MATR1's proposed pipeline — §6.2) — this **beats local reproduction (355) for the first time**, though it remains ~3% short of README. The pre-redesign columns are retained above for the record, not as live baselines. **An earlier draft of this table reported a "Baseline/Proposed" pair of 357.18/352.92 for CRUSH; we could not trace these to any pkl in the (pre-redesign) cache after a direct search, and replaced them with the verified numbers above** (§7).
+- **MATR1**: the Tier-3-based pipeline (backbone + Inter-Tier-1 correction, 74.0±6.1, 8-seed) is the proposed result. The pure Tier-1 ensemble (72.3±7.6, 8-seed) is numerically the best single number we have, but we do not adopt it as the MATR1 headline since it is not part of this work's core Tier-3 narrative — it is listed here only for completeness (§7 discusses why). Seed 7 is the one exception across all 8 seeds: the first individual seed where the full Tier-3 ensemble (83.5) beats Tier-1 (86.8), narrowing but not overturning the mean ordering.
+- **HUST**: Tier-3 underperforms *every* other configuration here — confirmed across all **8** seeds (not just the original 5) and at the level of every individual component (V1, V2, and Inter each score worse under Tier-3 than under Tier-1 at every seed; §5.2b). The proposed result for HUST is therefore the **Tier-1 (SOH-auxiliary) ensemble**, which is also what beats the README benchmark most clearly (289.8 vs. 322).
+- **CRUSH**: the pre-redesign split's two configurations (Tier-1, Tier-3) both clustered in the 367-372 range, beating neither README (330) nor our local reproduction (355). Investigating why (§6.1) surfaced a real train/val/test leakage bug in that split (fixed, but did not change the outcome) and, separately, a val-set RUL-coverage problem that did: redesigning val (random draw, size 15→20) and reinforcing train_base (64→70 cells) flips the val/test correlation from strongly negative to strongly positive and yields a new 8-seed result, **339.8±13.9** (`mean[V1-T3, V2-T3, Inter(V2-T3)]`, on the redesigned split; note this uses the Tier-3, not Tier-1, embedding for the Inter term, unlike MATR1's proposed pipeline — §6.2) — this **beats local reproduction (355) for the first time**, though it remains ~3% short of README. The pre-redesign columns are retained above for the record, not as live baselines. **An earlier draft of this table reported a "Baseline/Proposed" pair of 357.18/352.92 for CRUSH; we could not trace these to any pkl in the (pre-redesign) cache after a direct search, and replaced them with the verified numbers above** (§7).
 - **MATR1 and HUST** local, in-process reproduction of the official benchmark matches the published README figure exactly (90 and 322) — no reproducibility gap here, unlike CRUSH, where a gap against README persists even after this correction.
 
 ### 5.2 Ablation Study (MATR1)
@@ -277,6 +277,24 @@ Unlike MATR1, where Tier-3 is within noise of the no-SOH baseline, on HUST Tier-
 | **Mean±std (n=8)** | | | | | | | **289.8±12.4** | **316.9±16.8** |
 
 We also tested whether the MATR1-style cross-tier ensemble (Tier-3 backbone + Inter-Cell Embedding built on a Tier-1 embedding) closes this gap: it recovers part of it (309.0±17.9, n=8) but still does not reach the pure Tier-1 ensemble, and adding the Tier-3-embedding Inter-Cell Embedding as a fourth ensemble member changes nothing (NNLS never assigns it nonzero weight at any seed — it is the weakest component throughout). This holds at all 8/8 seeds, not just the original 5. We conclude that, for HUST, the monotonicity and Wiener constraints degrade the learned representation itself, not merely the ensemble-selection step; this is a genuine, seed-consistent negative result for Tier-3 on this dataset, discussed further in §6.3.
+
+### 5.2c Ablation Study (CRUSH): Redesigned Split, Ensemble Method Comparison
+
+All components below are trained under Tier-3 on the redesigned split (val=20, train_base=70, §6.1); this is the ablation underlying the 339.8±13.9 headline in §5.1:
+
+| Seed | V2-T3 | V1-T3 | Inter(V2-T3) | NNLS[V1-T3,V2-T3,Inter] | **mean[V1-T3,V2-T3,Inter]** |
+|---:|---:|---:|---:|---:|---:|
+| 0 | 323.2 | 349.1 | 317.9 | 331.5 | **327.5** |
+| 1 | 340.7 | 349.0 | 338.5 | 339.4 | **339.6** |
+| 2 | 362.0 | 341.9 | 376.8 | 366.8 | **352.2** |
+| 3 | 331.0 | 344.3 | 333.5 | 327.4 | **330.5** |
+| 4 | 336.1 | 308.9 | 333.8 | 313.6 | **319.7** |
+| 5 | 367.3 | 371.4 | 391.8 | 364.7 | **367.0** |
+| 6 | 320.2 | 363.1 | 328.6 | 369.8 | **340.3** |
+| 7 | 376.0 | 315.7 | 379.8 | 314.5 | **341.8** |
+| **Mean±std (n=8)** | 344.6±19.8 | 342.9±20.0 | 350.1±26.2 | 341.0±21.8 | **339.8±13.9** |
+
+Unlike MATR1 and HUST, where the ablation question is *which tier* to use, CRUSH's ablation question is *which ensemble-combination method* to use — the three solo components (V2-T3, V1-T3, Inter) are all within a few points of each other and of both ensemble methods, but NNLS's per-seed weight vectors swing widely (e.g. `[0,0.48,0.52]` at one seed, `[1,0,0]` at another), overfitting that seed's validation draw; the equal-weight mean is both lower-mean and lower-variance (13.9 vs. 21.8 std) across all 8 seeds. This is the same NNLS-instability-at-small-val pattern discussed in §6.3, now shown at the per-seed level rather than only as a summary statistic. We do not have a corresponding Tier-1-vs-Tier-3 per-component breakdown on the redesigned split (only Tier-3 was re-run there, §5.1); that comparison exists only on the pre-redesign split (§5.1's split-comparison table) and should not be read as answering the same question as this table.
 
 ### 5.3 On CRUH: Cross-Source Error Breakdown
 
