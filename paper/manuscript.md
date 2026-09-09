@@ -1,4 +1,4 @@
-# Axis-Aware Attention and Physics-Informed Degradation Modeling for Battery Remaining Useful Life Prediction
+# Physics-Informed Wiener-Diffusion Modeling with Cycle-Axis Attention for Lithium-Ion Battery Remaining Useful Life Prediction
 
 > **Draft status**: outline + key sections drafted for review. HUST (5-seed) and CRUSH (8-seed) Tier-3 runs are both complete (§5.1, §5.2b, §6.3) — HUST's proposed result is Tier-1; CRUSH's is Tier-3, though none of CRUSH's configurations beat README. MATR1's headline remains the pre-registered 5-seed result; a 7-seed robustness check (seed 8 pending) confirms the same ordering. Numbers marked `[TBD]` are pending only the SNL/CALCE/CRUH single-seed screens — do not cite before these are filled in and verified against `report_expirement/`.
 
