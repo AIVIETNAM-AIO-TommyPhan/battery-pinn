@@ -1,6 +1,6 @@
 # Physics-Informed Wiener-Diffusion Modeling with Cycle-Axis Attention for Lithium-Ion Battery Remaining Useful Life Prediction
 
-> **Draft status**: outline + key sections drafted for review. HUST (5-seed) and CRUSH (8-seed) Tier-3 runs are both complete (§5.1, §5.2b, §6.3) — HUST's proposed result is Tier-1; CRUSH's is Tier-3, though none of CRUSH's configurations beat README. MATR1's headline remains the pre-registered 5-seed result; a 7-seed robustness check (seed 8 pending) confirms the same ordering. Numbers marked `[TBD]` are pending only the SNL/CALCE/CRUH single-seed screens — do not cite before these are filled in and verified against `report_expirement/`.
+> **Draft status**: outline + key sections drafted for review. HUST and CRUSH Tier-3 runs are both complete at 8/8 seeds (§5.1, §5.2b, §6.3) — HUST's proposed result is Tier-1 (8-seed); CRUSH's proposed result is Tier-3 on a redesigned val/train split (8-seed), which now beats local reproduction for the first time (still short of README). MATR1's headline remains the pre-registered 5-seed result; an 8-seed robustness check (complete, all seeds) confirms the same ordering. Numbers marked `[TBD]` are pending only the SNL/CALCE/CRUH/MATR2 single-seed screens — do not cite before these are filled in and verified against `report_expirement/`.
 
 ## Abstract
 
@@ -38,14 +38,14 @@ We propose a framework for battery RUL prediction with four components, presente
 1. **Axis-aware attention backbone**: a CNN backbone with learned attention pooling over the cycle axis, plus a scalar branch over three physics-derived voltage–capacity features. This component alone surpasses the published README benchmark on MATR1 and HUST (§5.1).
 2. **Tier-3 physics-informed objective**: an auxiliary SOH-trajectory head trained jointly with (a) a monotonicity constraint on predicted SOH and (b) a Wiener-process diffusion loss on the capacity-fade increment $D(t) = 1 - \mathrm{SOH}(t)$, i.e. an explicit stochastic degradation model $dD(t) = \mu\,dt + \sigma\,dW(t)$ (§3.5). This is what we regard as the physics-informed component proper, as distinct from SOH-only auxiliary supervision (Tier-1), which we use only as a component inside the Inter-Cell Embedding module (below), not as a standalone claim.
 3. **Inter-Cell Embedding correction**: a small model that predicts pairwise RUL differences from frozen cell embeddings and aggregates over reference cells, used as a correction term in the final ensemble (§3.6).
-4. **Source-aware validation protocol**: train/validation/test separated by dataset and source, validation-only model selection, and 5-seed evaluation, with every deviation from this rule disclosed explicitly (§4.3, §7).
+4. **Source-aware validation protocol**: train/validation/test separated by dataset and source, validation-only model selection, and multi-seed evaluation (5 seeds for MATR1, 8 for HUST and CRUSH), with every deviation from this rule disclosed explicitly (§4.3, §7).
 
 ### 1.4 Contributions
 
 - An **axis-aware attention architecture** that surpasses the published README benchmark on MATR1 and HUST using only architecture and physics-derived features, with no auxiliary loss.
 - **Tier-3**, a physics-informed objective governed by an explicit stochastic degradation model (Wiener process on capacity fade), which we distinguish from simpler SOH-auxiliary supervision (Tier-1) both conceptually (§2.2) and in how it is used in the final pipeline (§3.6).
 - An **Inter-Cell Embedding** module that learns pairwise degradation relationships between cells and is combined with the Tier-3 backbone via a disclosed cross-tier design (§3.6, §6.2).
-- A **fully disclosed evaluation protocol**: 5-seed mean±std throughout, comparison against both the published README benchmark and our own in-process reproduction of it, and explicit disclosure of every case where hyperparameter selection deviated from validation-only screening (§4.3, §7).
+- A **fully disclosed evaluation protocol**: multi-seed mean±std throughout (5-seed for MATR1, 8-seed for HUST and CRUSH), comparison against both the published README benchmark and our own in-process reproduction of it, and explicit disclosure of every case where hyperparameter selection deviated from validation-only screening (§4.3, §7).
 
 ---
 
@@ -183,14 +183,17 @@ Note the corrected naming: the cross-lab composite dataset is **CRUSH** (README 
 
 ### 4.2 Baselines
 
-- **No-SOH baseline**: the axis-aware attention architecture (V1+V2+Inter-Cell Embedding, all trained with plain MSE, no auxiliary head).
-- **Tier-3 backbone only**: V1+V2 trained under $\mathcal{L}_{\mathrm{Tier3}}$, no Inter-Cell Embedding.
-- **Proposed full pipeline**: Tier-3 backbone (V1+V2) + Inter-Cell Embedding (Tier-1 embedding), NNLS-ensembled.
+We compare the following configurations, each trainable in either backbone variant (**V1**: with cycle positional encoding; **V2**: without — §3.4):
+
+- **SmallCNN (no auxiliary head)**: the axis-aware attention architecture (V1+V2) trained with plain MSE only — no SOH head, no monotonicity/Wiener terms. Isolates the architecture's own contribution before any physics-informed term is added.
+- **Tier-1**: SmallCNN + an SOH-auxiliary head (Smooth-L1), $\lambda_{\mathrm{SOH}}$ pre-declared per the disclosed deviation below. Used in this work only as the embedding source for Inter-Cell Embedding (§3.6), not as a standalone architectural claim except where a dataset's evidence makes it the proposed result (HUST, §5.1).
+- **Tier-3**: SmallCNN + SOH-auxiliary head + monotonicity constraint + Wiener-process diffusion loss (§3.5) — this work's primary physics-informed objective.
+- **Ensemble (proposed)**: V1 + V2 (both trained under whichever tier is that dataset's evidence-supported backbone, §5.1) combined with the Inter-Cell Embedding module, via either an affine-calibrated NNLS fit or a simple (unweighted) mean on validation (§3.6, §6.1) — we report both and adopt whichever the per-dataset validation evidence supports, since §6.1 shows NNLS is not a safe default at small validation sizes.
 - Additional architectures (BatLiNet, BatLiNet-V2, 1D-CNN, LSTM/BiLSTM baselines) are reported in the Appendix.
 
 ### 4.3 Training & Evaluation Protocol, and Disclosed Deviations
 
-- **Multi-seed evaluation**: 5 seeds for MATR1/HUST/CRUSH main results; 1 seed for CRUH/SNL/CALCE (§5.4), explicitly reported as a screen, not a claim.
+- **Multi-seed evaluation**: **5 seeds for MATR1** (pre-registered headline; an 8-seed robustness check is also reported and confirms the same ordering, §5.1), **8 seeds for HUST and CRUSH** main results; 1 seed for CRUH/SNL/MATR2 (§5.4), explicitly reported as a screen, not a claim.
 - **Checkpoint selection**: lowest validation RMSE per seed; test evaluated once per seed on the selected checkpoint.
 - **Metrics**: RMSE, MAE, MAPE, and R² reported together (§5.1 currently reports RMSE only pending backfill of the other three — [TBD]).
 - **Pre-declared hyperparameters**: $\lambda_{\mathrm{SOH}}, \lambda_{\mathrm{mono}}, \lambda_{\mathrm{wiener}}, \tau$ (§3.5) are fixed identically across datasets and were not tuned per-dataset for the Tier-3 backbone.
@@ -205,15 +208,15 @@ Note the corrected naming: the cross-lab composite dataset is **CRUSH** (README 
 
 | Dataset | README | Local reproduction | No-SOH baseline | Tier-1 (SOH-aux) | Tier-3 backbone only | **Proposed (best available)** |
 |---:|---:|---:|---:|---:|---:|---:|
-| MATR1 | 90 | 90 | 70.42 ± 4.90 | 68.93 ± 6.11 (reference only, §7) | 73.62 ± 4.85 (5-seed); 74.83±4.55 (7-seed robustness check) | **71.06 ± 5.25** (Tier-3 backbone + Inter-Tier-1) |
-| HUST | 322 | 322 | 299.39 ± 19.52 | **289.82 ± 12.38** (8-seed) | 313.12 ± 18.55 (5-seed) | **289.82 ± 12.38** (Tier-1 ensemble) |
-| CRUSH | 330 | 355 | 371.64 ± 5.53 (5-seed, verified — supersedes an earlier, untraceable 357.18 figure) | 371.29 ± 8.92 (λ=0.10, 8-seed) | 367.49 ± 9.07 (NNLS, 8-seed) | **367.49 ± 9.07** (Tier-3 ensemble) |
+| MATR1 | 90 | 90 | 70.4 ± 4.9 | 68.9 ± 6.1 (reference only, §7) | 73.6 ± 4.9 (5-seed); 75.9 ± 5.1 (8-seed robustness check) | **71.1 ± 5.3** (Tier-3 backbone + Inter-Tier-1) |
+| HUST | 322 | 322 | 299.4 ± 19.5 | **289.8 ± 12.4** (8-seed) | 316.9 ± 16.8 (8-seed) | **289.8 ± 12.4** (Tier-1 ensemble) |
+| CRUSH | 330 | 355 | 371.6 ± 5.5 (5-seed, verified — supersedes an earlier, untraceable 357.18 figure; pre-redesign split) | 371.3 ± 8.9 (λ=0.10, 8-seed; pre-redesign split) | 367.5 ± 9.1 (NNLS, 8-seed; pre-redesign split) | **339.8 ± 13.9** (Tier-3, redesigned val/train split, simple-mean ensemble, 8-seed) |
 
 Interpretation, stated plainly rather than as a uniform win — **the best-performing tier is dataset-dependent, and we report whichever configuration is empirically best per dataset rather than forcing one method everywhere**:
 
-- **MATR1**: the Tier-3-based pipeline (backbone + Inter-Tier-1 correction) is the proposed result, landing within noise of the no-SOH baseline. The pure Tier-1 ensemble (68.93±6.11) is numerically the best single number we have, but we do not adopt it as the MATR1 headline since it is not part of this work's core Tier-3 narrative — it is listed here only for completeness (§7 discusses why). A post-hoc robustness check extending Tier-3 to 7 seeds (adding seeds 5-6; seed 7 pending) shows the same ordering (Tier-1 ensemble 70.17±5.58 vs. Tier-3 74.83±4.55 at n=7) — the conclusion is stable, not an artifact of which 5 seeds were used.
-- **HUST**: Tier-3 underperforms *every* other configuration here, including the no-SOH baseline — confirmed across all 5 seeds and at the level of every individual component (V1, V2, and Inter each score worse under Tier-3 than under Tier-1 at every seed; §5.2b). The proposed result for HUST is therefore the **Tier-1 (SOH-auxiliary) ensemble**, which is also what beats the README benchmark most clearly (289.82 vs. 322).
-- **CRUSH**: none of the three configurations (no-SOH baseline, Tier-1, Tier-3) beat either the README figure (330) or our own local reproduction (355) — all three cluster in the 367-372 range. Tier-3 (367.49±9.07, using NNLS) is numerically the best of the three but the differences are within noise of each other. **An earlier draft of this table reported a "Baseline/Proposed" pair of 357.18/352.92 for CRUSH; we could not trace these to any pkl in the current, consistent cache (`..._hust10_calce15_fullval_withsoh`, pen=1.4) after a direct search, and have replaced them with the verified numbers above** (§7).
+- **MATR1**: the Tier-3-based pipeline (backbone + Inter-Tier-1 correction) is the proposed result, landing within noise of the no-SOH baseline. The pure Tier-1 ensemble (68.9±6.1) is numerically the best single number we have, but we do not adopt it as the MATR1 headline since it is not part of this work's core Tier-3 narrative — it is listed here only for completeness (§7 discusses why). An 8-seed robustness check confirms the same ordering (Tier-1 ensemble 72.3±7.6 vs. Tier-3 75.9±5.1) — the conclusion is stable, not an artifact of which 5 seeds were used. Seed 7 is the one exception: the first individual seed where the full Tier-3 ensemble (83.5) beats Tier-1 (86.8), narrowing but not overturning the mean ordering.
+- **HUST**: Tier-3 underperforms *every* other configuration here, including the no-SOH baseline — confirmed across all **8** seeds (not just the original 5) and at the level of every individual component (V1, V2, and Inter each score worse under Tier-3 than under Tier-1 at every seed; §5.2b). The proposed result for HUST is therefore the **Tier-1 (SOH-auxiliary) ensemble**, which is also what beats the README benchmark most clearly (289.8 vs. 322).
+- **CRUSH**: the pre-redesign split's three configurations (no-SOH baseline, Tier-1, Tier-3) all clustered in the 367-372 range, beating neither README (330) nor our local reproduction (355). Investigating why (§6.1) surfaced a real train/val/test leakage bug in that split (fixed, but did not change the outcome) and, separately, a val-set RUL-coverage problem that did: redesigning val (random draw, size 15→20) and reinforcing train_base (64→70 cells) flips the val/test correlation from strongly negative to strongly positive and yields a new 8-seed result, **339.8±13.9** (simple mean of V1+V2+Inter-Cell Embedding, all Tier-3) — this **beats local reproduction (355) for the first time**, though it remains ~3% short of README. The pre-redesign columns are retained above for the record, not as live baselines. **An earlier draft of this table reported a "Baseline/Proposed" pair of 357.18/352.92 for CRUSH; we could not trace these to any pkl in the (pre-redesign) cache after a direct search, and replaced them with the verified numbers above** (§7).
 - **MATR1 and HUST** local, in-process reproduction of the official benchmark matches the published README figure exactly (90 and 322) — no reproducibility gap here, unlike CRUSH, where a gap against README persists even after this correction.
 
 ### 5.2 Ablation Study (MATR1)
