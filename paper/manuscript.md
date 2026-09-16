@@ -597,7 +597,3 @@ Accordingly, the present results should be interpreted as within-protocol genera
 - **Architecture sizes**: CNN backbone 6→16→32→32 channels (§3.4.1); scalar branch 3→16→16 (§3.4.3); SOH/$\mu$/$\sigma$ heads are single linear layers $\mathbb{R}^{48}\to\mathbb{R}^{100}$ (§3.5); Inter-Cell Embedding MLP $48\to64\to1$ (§3.6).
 - **Initialization**: PyTorch defaults throughout — not overridden.
 - Optimizer/lr/patience for the SNL, CALCE, CRUH, and MATR2 single-seed screens (§5.5–§5.7) are `[TBD]` (screens predate this manuscript's protocol-disclosure pass; to be backfilled from the original run scripts).
-
-### C. Code and Data Availability
-
-[Links to code repository and data access instructions, if applicable.]

@@ -6,16 +6,18 @@
 
 Code and results for a physics-informed RUL-prognostics research track built
 on top of a private fork of [microsoft/BatteryML](https://github.com/microsoft/BatteryML),
-covering six datasets: **MATR1, MATR2, HUST, CRUSH, CRUH, SNL**. See
+covering seven datasets: **MATR1, MATR2, HUST, CRUSH, CRUH, SNL, CALCE**
+(CALCE is screened only as a CRUH donor source so far — no standalone
+result yet, §5.5 of the manuscript). See
 [ARCHITECTURE.md](ARCHITECTURE.md) for the full V1/V2/Inter-Embedding
 diagram with SOH heads, mapped block-by-block to `src/battery_pinn/`. Does **not**
 contain the BatteryML library itself (`batteryml/`, `BatLiNet/`) — see
 "Dependencies" below.
 
-Every number in this README is read directly from `reports/day_0906/report.md`
-(or an earlier day's report where noted), each traceable to a specific
-`.pkl`/log file per that report's own discipline — nothing here is
-restated from memory. Single-seed numbers are labeled as screens, not results.
+Every number in this README is read directly from `paper/manuscript.md`
+(the current source of truth) or `reports/day_0906/report.md` where the
+manuscript doesn't cover it, each traceable to a specific `.pkl`/log file.
+Single-seed numbers are labeled as screens, not results.
 
 ---
 
@@ -39,9 +41,13 @@ restated from memory. Single-seed numbers are labeled as screens, not results.
 3. **Inter-Cell Embedding** — a small MLP that learns pairwise RUL
    *differences* from frozen backbone embeddings, then infers a target
    cell's RUL by median-aggregating over a stratified reference set of
-   training cells. Built on a **Tier-1** (SOH-auxiliary-only) embedding,
-   not Tier-3 — empirically the Tier-3 embedding's temporal constraints
-   compress the relative-distance structure this module needs.
+   training cells. On average across seeds it does better on a Tier-1
+   (SOH-auxiliary-only) embedding than a Tier-3 one, consistent with the
+   idea that Tier-3's temporal constraints compress the relative-distance
+   structure this module needs — but a full 6-component NNLS search on
+   MATR1 does **not** consistently favor Tier-1 for this module per seed,
+   so this is a real average tendency, not a fixed per-dataset design rule
+   (manuscript §6.2, §7).
 4. **Ensemble calibration, with an explicit caveat** — components are
    affine-calibrated on val, then combined by either NNLS-fit weights or a
    plain mean (`src/battery_pinn/calibration/ensemble.py`). NNLS is not a
@@ -53,21 +59,26 @@ restated from memory. Single-seed numbers are labeled as screens, not results.
 
 ## Results
 
-| Dataset | README target | Ours | RMSE | MAE | MAPE (%) | R² | Beats README? |
-|---|---:|---|---:|---:|---:|---:|---|
-| **MATR1** | 90 (PCR) | Tier-3 backbone + Inter(Tier-1), 5-seed, official | **71.1 ± 5.3** | 60.9 ± 4.8 | 9.3 ± 0.8 | 96.3 ± 0.5% | ✅ ~21% better |
-| **HUST** | 322 | Tier-1 ensemble, 8-seed | **289.8 ± 12.4** | 234.0 ± 13.1 | 12.8 ± 0.7 | 52.1 ± 4.1% | ✅ ~10% better (via Tier-1; Tier-3 is worse here, 316.9±16.8) |
-| **CRUSH** | 330 (local repro 355) | Tier-3, redesigned val/train, simple-mean, 8-seed | **339.8 ± 13.9** | 204.3 ± 12.4 | 50.2 ± 7.1 | 59.3 ± 3.4% | 🟡 beats local repro by ~4.5%, still ~3% short of README |
-| MATR2 | 149 | No-SOH ensemble, **single-seed screen** | 210.7 | — | — | — | ❌ no |
-| CRUH | 60 | No-SOH ensemble, **single-seed screen** | 100.7 | 72.5 | 12.8 | 68.0% | ❌ no |
-| SNL | 200 | Best of 4 val-construction screens, **single-seed** | 370.6 | 250.6 | 56.8 | 31.0% | ❌ no |
+| Dataset | README target | Ours | RMSE | Beats README? |
+|---|---:|---|---:|---|
+| **MATR1** | 90 (PCR) | `NNLS[all 6]` (both tiers, validation-selected), 8-seed | **73.0 ± 6.7** | ✅ ~19% better |
+| **HUST** | 322 | Tier-1 ensemble, 8-seed | **289.8 ± 12.4** | ✅ ~10% better (via Tier-1; Tier-3 is worse here, 316.9±16.8) |
+| **CRUSH** | 330 (local repro 355) | Tier-3, redesigned val/train, simple-mean, 8-seed | **339.8 ± 13.9** | 🟡 beats local repro by ~4.5%, still ~3% short of README |
+| MATR2 | 149 | No-SOH ensemble, **single-seed screen** | 210.7 | ❌ no (density gap, not protocol shift — see manuscript §5.7) |
+| CRUH | 60 | No-SOH `v1v2inter` ensemble, **single-seed screen** | 100.72 | ❌ no (pooled RMSE hides a CALCE-specific extrapolation failure, §5.6) |
+| SNL | 200 | Cluster n=2 (highest val↔test corr, 0.957), **single-seed screen** | 456.84 | ❌ no |
+| CALCE | — | not yet screened standalone (used only as a CRUH donor pool, §5.6) | — | — |
 
 MATR2/CRUH/SNL are explicitly flagged single-seed screens, not multi-seed
-claims, per this project's own reproducibility discipline — see
-`reports/day_0906/report.md`'s Error Analysis (§4) for why SNL and CRUH, in
-particular, are dominated by one structurally-different low-n subgroup
-(SNL's LFP chemistry; CRUH's CALCE lab) that neither a better val split nor
-train augmentation has fixed so far.
+claims. The reported SNL/CRUH numbers are each the construction whose
+val↔test correlation is highest among several tried — the only
+configuration where validation-based model selection is defensible — not
+the best-looking test number; see manuscript §5.5–§5.7 (and
+`reports/day_0906/report.md`'s Error Analysis §4 for the earlier version
+of this investigation) for why SNL and CRUH are each dominated by one
+structurally-different low-n subgroup (SNL's LFP chemistry; CRUH's CALCE
+lab) that neither a better val split nor train augmentation has fixed so
+far, and for MATR2's density-gap-vs-protocol-shift analysis.
 
 ---
 
@@ -92,7 +103,14 @@ battery-pinn-release/
 │
 ├── paper/
 │   ├── manuscript.md              draft manuscript (formerly paper_0904.md)
-│   ├── figures/                   placeholder — no extracted figure files yet
+│   ├── figures/                   architecture_v1_v2_inter.png (Fig. 1);
+│   │                               matr2_rul_smallmultiples.png (Fig. 2,
+│   │                               train_base vs. README's M1tr vs. test RUL),
+│   │                               matr2_rul_density.png (Fig. 3, error vs.
+│   │                               RUL + train density), matr2_rul_vs_shift.png
+│   │                               (Fig. 4, RUL-vs-feature-shift scatter) —
+│   │                               the three MATR2 figures are regenerable via
+│   │                               scripts/matr2/data_build/make_matr2_rul_*.py
 │   └── tables/                    placeholder — result tables currently
 │                                   live inline in reports/*/report.md, not
 │                                   extracted to standalone files
@@ -170,12 +188,21 @@ battery-pinn-release/
     │   └── utils/          (1)    _assemble_notebook.py (scratch-cell →
     │                              notebook assembly helper, project convention)
     │
-    ├── matr2/                     5 scripts — split out as its own dataset
-    │   │                          (train_base pools MATR1+MATR34-b4+HUST;
-    │   │                          test is pure MATR34-b4, the official
-    │   │                          "unseen protocol" batch)
-    │   ├── data_build/     (2)    build_matr2_feature_cache.py,
-    │   │                          build_matr2_variant_caches.py
+    ├── matr2/                     8 scripts — split out as its own dataset
+    │   │                          (train_base pools MATR1_train+MATR1_test+
+    │   │                          MATR34-b4+HUST; test is pure MATR34-b3,
+    │   │                          the official "unseen protocol" batch —
+    │   │                          not to be confused with MATR34-b4, a
+    │   │                          different sub-batch folded into train)
+    │   ├── data_build/     (5)    build_matr2_feature_cache.py,
+    │   │                          build_matr2_variant_caches.py,
+    │   │                          make_matr2_rul_smallmultiples.py,
+    │   │                          make_matr2_rul_density_figure.py,
+    │   │                          make_matr2_rul_vs_shift_figure.py
+    │   │                          (the three make_*.py scripts regenerate
+    │   │                          paper/figures/matr2_*.png and print the
+    │   │                          feature-shift SMD/correlation numbers
+    │   │                          cited in manuscript §5.7)
     │   ├── validation/     (1)    diag_matr2_v2only_nostop.py
     │   └── ensemble/       (2)    run_matr2_smallcnn_screen.py,
     │                              run_matr2_v1v2inter_ensemble.py
@@ -301,8 +328,8 @@ the full per-split RUL-distribution and composition tables):
 | MATR2 | 40 | nearest-neighbor RUL-match to test, drawn from the same MATR1+MATR34-b4+HUST pool as train_base — disclosed test-informed choice | `scripts/matr2/data_build/build_matr2_feature_cache.py` |
 | HUST | 12 (of 55 official-train) | RUL-tercile-stratified, pre-declared before touching test | `scripts/hust/data_build/build_hust_feature_cache.py` |
 | CRUSH | 20 (of 70 train+val pool) | plain random draw — found THIS session after ruling out quantile-stratified and test-centroid-similarity val redesigns; fixed a val/test RUL-range mismatch (r=−0.370 → +0.785, see report.md Error Analysis §2) | `scripts/crush/validation/build_crush_val_random.py` |
-| CRUH | 17 | cluster-based (K-means on scalar features + RUL); has a **known, unfixed** distribution mismatch (val mean RUL sits well below both train and test) — an open item, not yet given the CRUSH treatment | `scripts/cruh/validation/build_cruh_cluster_val.py` |
-| SNL | 5 (of 16 official-train, labeled subset) | RUL-tercile-stratified; this session's version also fixed a NaN-feature bug in the donor-pool cache it builds from | `scripts/snl/validation/build_snl_split.py` |
+| CRUH | 17 | cluster-based (K-means on scalar features + RUL), cluster n=3 ("base") — the designated construction, chosen for the highest val↔test correlation tried (0.980); six alternative cluster/donor compositions were also screened, ranging down to −0.687 (manuscript §5.6) | `scripts/cruh/validation/build_cruh_cluster_val.py` |
+| SNL | 8 (designated: cluster n=2) | cluster-based (K-means on scalar features + RUL); designated by highest val↔test correlation among five constructions tried (0.957), not by best-looking test RMSE — the other four (incl. a val=5 RUL-tercile-stratified variant, `build_snl_split.py`) swing as low as −0.760 and are shown only to demonstrate instability (manuscript §5.5) | `scripts/snl/validation/build_snl_cluster_val.py` |
 
 If you rebuild a feature cache from scratch, running the `data_build/`
 script alone reproduces the *official* train/test split; you additionally
@@ -366,5 +393,5 @@ redistribute) microsoft/BatteryML, itself MIT-licensed.
 
 ## Status
 
-Local git repo (`git init` done, `master` branch), not pushed to any
-remote. Staged here for review before deciding where (if anywhere) to push it.
+Pushed to GitHub (`origin`), currently on branch `feature/update_manuscript`,
+not yet merged to `main`.
