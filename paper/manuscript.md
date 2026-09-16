@@ -100,7 +100,7 @@ Each cell is represented as a tensor $X_i \in \mathbb{R}^{6\times100\times1000}$
 
 Three handcrafted scalar features, computed over early cycles (0–99) from observed data only (no label leakage):
 
-1. **qdlin_diff_std** — $\operatorname{std}_V\left[Q_{\text{dlin}}^{(99)}(V) - Q_{\text{dlin}}^{(9)}(V)\right]$: non-uniformity of capacity fade across voltage bins; falls back to a capacity-fade-slope estimate when degenerate (e.g., insufficient voltage-bin coverage).
+1. **qdlin_diff_std** — $\mathrm{std}_V[Q_{dlin}^{(99)}(V) - Q_{dlin}^{(9)}(V)]$: non-uniformity of capacity fade across voltage bins; falls back to a capacity-fade-slope estimate when degenerate (e.g., insufficient voltage-bin coverage).
 2. **voltage_slope_50_90** — $\frac{V_{90}-V_{50}}{0.4}$: discharge-voltage slope in the high-SOC region.
 3. **voltage_soc_90** — $V_{90}$: discharge voltage at SOC 90%.
 
@@ -157,7 +157,7 @@ $$
 \Delta D_t = D_{t+1} - D_t, \quad r_t = \Delta D_t - \mu_t, \quad v_t = \sigma_t^2 + \epsilon,
 $$
 $$
-\mathcal{L}_{\mathrm{Wiener}} = \frac{1}{T-1}\sum_{t=1}^{T-1} \left(\frac{1}{2}\frac{r_t^2}{v_t} + \frac{1}{2}\log v_t\right),
+\mathcal{L}_{\mathrm{Wiener}} = \frac{1}{T-1}\sum_{t=1}^{T-1} (\frac{1}{2}\frac{r_t^2}{v_t} + \frac{1}{2}\log v_t),
 $$
 $$
 \mathcal{L}_{\mathrm{Tier3}} = \mathcal{L}_{\mathrm{RUL}} + \lambda_{\mathrm{SOH}}\mathcal{L}_{\mathrm{SOH}} + \lambda_{\mathrm{mono}}\mathcal{L}_{\mathrm{mono}} + \lambda_{\mathrm{wiener}}\mathcal{L}_{\mathrm{Wiener}}.
